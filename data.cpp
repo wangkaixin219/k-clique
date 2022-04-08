@@ -10,23 +10,16 @@ void read_graph(graph& g, const string& graph_file) {
         unsigned u, v;
         stringstream ss(line);
         ss >> u >> v;
-        g[u].insert(v);
-        g[v].insert(u);
+        g.adj[u].insert(v);
+        g.adj[v].insert(u);
     }
 
     f.close();
 }
 
-unsigned random_select(set<unsigned> candidate) {
-    unsigned n = rand_int(0, candidate.size()-1);
-    set<unsigned>::iterator it = candidate.begin();
-    advance(it, n);
-    return *(it);
-}
-
 void syn_graph(graph& g, unsigned n, double p) {
 
-    for (unsigned i = 2; i < n; ++i) {
+    for (unsigned i = 2; i <= n; ++i) {
         fprintf(stdout, "Generate %.2lf%% edges\r", (double) i / n * 100);
         fflush(stdout);
         unsigned ambassador = rand_int(1, i-1);
@@ -39,8 +32,8 @@ void syn_graph(graph& g, unsigned n, double p) {
         while (!q.empty()) {
             long u = q.front();
             unsigned n_link = rand_geo(p);
-            if (g[u].size() <= n_link) {
-                for (unsigned v : g[u]) {
+            if (g.adj[u].size() <= n_link) {
+                for (unsigned v : g.adj[u]) {
                     if (seen.count(v) == 0) {
                         q.push(v);
                         seen.insert(v);
@@ -50,15 +43,15 @@ void syn_graph(graph& g, unsigned n, double p) {
             }
             else {
                 while (n_link--) {
-                    unsigned v = random_select(g[u]);
+                    unsigned v = rand_select(g.adj[u]);
                     if (seen.count(v) == 0) {
                         q.push(v);
                         seen.insert(v);
                     }
                 }
             }
-            g[i].insert(u);
-            g[u].insert(i);
+            g.adj[i].insert(u);
+            g.adj[u].insert(i);
             q.pop();
         }
         seen.clear();
@@ -67,7 +60,7 @@ void syn_graph(graph& g, unsigned n, double p) {
 
 void save_graph(const graph& g, const string& graph_file) {
     ofstream f(graph_file);
-    for (pair<unsigned, set<unsigned>> u_adj : g) {
+    for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
         unsigned u = u_adj.first;
         set<unsigned> adj = u_adj.second;
         for (unsigned v : adj) {
@@ -79,12 +72,27 @@ void save_graph(const graph& g, const string& graph_file) {
 }
 
 void print_graph(const graph& g) {
-    for (pair<unsigned, set<unsigned>> u_adj : g) {
+    cout << "Adj ";
+    for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
         unsigned u = u_adj.first;
         set<unsigned> adj = u_adj.second;
         for (unsigned v : adj) {
             cout << "(" << u << ", " << v << ") ";
         }
     }
+    cout << endl << "Color ";
+
+    for (pair<unsigned, unsigned> u_c : g.color) {
+        cout << "(" << u_c.first << ", " << u_c.second << ") ";
+    }
+    cout << endl << "Order ";
+
+    for (pair<unsigned, unsigned> u_c : g.order) {
+        cout << "(" << u_c.first << ", " << u_c.second << ") ";
+    }
     cout << endl;
+}
+
+void print_result(const result& res) {
+    printf("Runtime %8.2lf, calls %8u, cliques %8u\n\n", res.runtime, res.calls, res.cliques);
 }

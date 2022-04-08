@@ -1,17 +1,31 @@
 #include "defs.h"
 
-#define GF "../data/syn.edges"
-#define OF "../data/syn.order"
+result results;
 
 int main(int argc, const char* argv[]) {
 
-    graph g;
-    syn_graph(g, 1000, 0.5);
+    param parameters;
+    rusage start, end;
+    arg_parser(argc, argv, parameters);
 
-    save_graph(g, GF);
-    save_order(g, OF);
+    if (parameters.n != 0) {        // generate graph
+        graph g;
+        syn_graph(g, parameters.n, parameters.p);
+        save_graph(g, parameters.path);
+        exit(0);
+    }
 
-    dag(g, OF);
-    set<unsigned> res;
-    k_clique(g, res, 4);
+    graph G;
+    set<unsigned> R;
+    read_graph(G, parameters.path);
+    order(G, parameters.order);
+    dag(G);
+
+    GetCurTime(&start);
+    k_clique(G, R, parameters.k);
+    GetCurTime(&end);
+    results.runtime = GetTime(&start, &end);
+    print_result(results);
+
+
 }

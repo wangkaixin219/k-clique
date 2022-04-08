@@ -1,4 +1,4 @@
-OBJ = main.o data.o k-clique.o
+OBJ = main.o data.o parser.o k-clique.o 
 CC = gcc
 CXX = g++
 CFLAGS = -std=c++2a -Wall -O3 -g
@@ -12,6 +12,9 @@ main.o: main.cpp defs.h
 
 data.o: data.cpp defs.h
 	$(CXX) $(CFLAGS) -c data.cpp
+
+parser.o: parser.cpp defs.h
+	$(CXX) $(CFLAGS) -c parser.cpp
 
 k-clique.o: k-clique.cpp  defs.h
 	$(CXX) $(CFLAGS) -c k-clique.cpp
