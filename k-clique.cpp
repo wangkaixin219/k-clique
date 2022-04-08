@@ -4,8 +4,10 @@ extern result results;
 
 void degeneracy_ordering(graph& g) {
     map<unsigned, set<unsigned>> adj = g.adj;
-    unsigned i = 1;
+    unsigned i = 1, n = adj.size();
     while (!adj.empty()) {
+        fprintf(stdout, "Process %.2lf%% vertices\r", (double) i / n * 100);
+        fflush(stdout);
         unsigned min_u = 0, min_deg = INT_MAX;
         for (pair<unsigned, set<unsigned>> u_adj : adj) {
             unsigned u = u_adj.first, deg = adj[u].size();
@@ -24,8 +26,12 @@ void degeneracy_ordering(graph& g) {
 }
 
 void degree_ordering(graph& g) {
+    unsigned i = 1, n = g.adj.size();
     vector<pair<unsigned, unsigned>> V;
     for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
+        fprintf(stdout, "Process %.2lf%% vertices\r", (double) i / n * 100);
+        fflush(stdout);
+        i++;
         unsigned u = u_adj.first;
         V.push_back(make_pair(g.adj[u].size(), u));
     }
@@ -36,9 +42,15 @@ void degree_ordering(graph& g) {
 }
 
 void random_ordering(graph& g) {
+    unsigned i = 1, n = g.adj.size();
     set<unsigned> unused;
-    for(unsigned i = 1; i <= g.adj.size(); i++) unused.insert(i);
+    for(i = 1; i <= n; i++) unused.insert(i);
+
+    i = 1;
     for(pair<unsigned, set<unsigned>> u_adj : g.adj) {
+        fprintf(stdout, "Process %.2lf%% vertices\r", (double) i / n * 100);
+        fflush(stdout);
+        i++;
         unsigned u = u_adj.first, r = rand_select(unused);
         g.order[u] = r;
         unused.erase(r);
@@ -46,7 +58,11 @@ void random_ordering(graph& g) {
 }
 
 void lexicographic_ordering(graph& g) {
+    unsigned i = 1, n = g.adj.size();
     for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
+        fprintf(stdout, "Process %.2lf%% vertices\r", (double) i / n * 100);
+        fflush(stdout);
+        i++;
         unsigned u = u_adj.first;
         set<unsigned> adj = u_adj.second;
         if (!g.order.contains(u)) g.order[u] = u;
@@ -88,23 +104,27 @@ void color(graph& g) {
 
 void order(graph& g, unsigned type) {
     if (type == DEGENERACY) {
-        printf("Degeneracy based ordering\n");
+        printf("Degeneracy ordering\n");
         degeneracy_ordering(g);
+        printf("Degeneracy ordering finish\n");
     }
     else if (type == DEGREE) {
-        printf("Degree based ordering\n");
+        printf("Degree ordering\n");
         degree_ordering(g);
+        printf("Degree ordering finish\n");
     }
     else if (type == RANDOM) {
-        printf("Random based ordering\n");
+        printf("Random ordering\n");
         random_ordering(g);
+        printf("Random ordering finish\n");
     }
     else if (type == LEARNED) {
         // TODO
     }
     else {
-        printf("Lexicographic based ordering\n");
+        printf("Lexicographic ordering\n");
         lexicographic_ordering(g);
+        printf("Lexicographic ordering finish\n");
     }
 
     color(g);

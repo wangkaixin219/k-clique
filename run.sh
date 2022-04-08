@@ -2,7 +2,7 @@
 
 make
 
-./k-clique -g 1000 0.4
+./k-clique -g 10000 0.5
 echo
 
 for k in {3..10}

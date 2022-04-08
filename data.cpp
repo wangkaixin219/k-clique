@@ -18,6 +18,7 @@ void read_graph(graph& g, const string& graph_file) {
 }
 
 void syn_graph(graph& g, unsigned n, double p) {
+    unsigned e = 0;
 
     for (unsigned i = 2; i <= n; ++i) {
         fprintf(stdout, "Generate %.2lf%% edges\r", (double) i / n * 100);
@@ -52,10 +53,12 @@ void syn_graph(graph& g, unsigned n, double p) {
             }
             g.adj[i].insert(u);
             g.adj[u].insert(i);
+            e++;
             q.pop();
         }
         seen.clear();
     }
+    cout << "|V| = " << n << ", |E| = " << e << endl;
 }
 
 void save_graph(const graph& g, const string& graph_file) {
