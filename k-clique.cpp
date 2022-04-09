@@ -6,6 +6,9 @@ void degeneracy_ordering(graph& g) {
     map<unsigned, set<unsigned>> adj = g.adj;
     unsigned i = 1;
     while (!adj.empty()) {
+
+        pair
+
         unsigned min_u = 0, min_deg = INT_MAX;
         for (pair<unsigned, set<unsigned>> u_adj : adj) {
             unsigned u = u_adj.first, deg = adj[u].size();
