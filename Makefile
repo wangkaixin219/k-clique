@@ -1,4 +1,4 @@
-OBJ = main.o data.o parser.o k-clique.o 
+OBJ = main.o k-clique.o utils.o graph.o
 CC = gcc
 CXX = g++
 CFLAGS = -std=c++2a -Wall -O3 -g
@@ -10,15 +10,14 @@ all: $(OBJ)
 main.o: main.cpp defs.h 
 	$(CXX) $(CFLAGS) -c main.cpp
 
-data.o: data.cpp defs.h
-	$(CXX) $(CFLAGS) -c data.cpp
-
-parser.o: parser.cpp defs.h
-	$(CXX) $(CFLAGS) -c parser.cpp
-
 k-clique.o: k-clique.cpp  defs.h
 	$(CXX) $(CFLAGS) -c k-clique.cpp
 
+utils.o: utils.cpp defs.h
+	$(CXX) $(CFLAGS) -c utils.cpp
+
+graph.o: graph.cpp defs.h
+	$(CXX) $(CFLAGS) -c graph.cpp
 
 .PHONY: clean
 clean:

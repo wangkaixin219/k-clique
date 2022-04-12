@@ -1,31 +1,29 @@
 #include "defs.h"
 
-result results;
+result_t results;
+param_t parameters;
 
 int main(int argc, const char* argv[]) {
 
-    param parameters;
     rusage start, end;
-    arg_parser(argc, argv, parameters);
+    arg_parser(argc, argv, &parameters);
+    graph_t* g;
 
-    if (parameters.n != 0) {        // generate graph
-        graph g;
-        syn_graph(g, parameters.n, parameters.p);
-        save_graph(g, parameters.path);
-        exit(0);
+    if (parameters.n != 0) {
+        g = forest_fire(parameters.n, parameters.p);
+        fprintf(stdout, "\n|V| = %u, |E| = %u\n", g->N, g->M);
+        write_graph(g, parameters.path);
+        free_graph(g);
     }
-
-    graph G;
-    set<unsigned> R;
-    read_graph(G, parameters.path);
-    order(G, parameters.order);
-    dag(G);
-
-    GetCurTime(&start);
-    k_clique(G, R, parameters.k);
-    GetCurTime(&end);
-    results.runtime = GetTime(&start, &end);
-    print_result(results);
-
-
+    else {
+        g = read_graph(parameters.path);
+        ordering(g, parameters.order);
+        GetCurTime(&start);
+        k_clique(g, parameters.k);
+        GetCurTime(&end);
+        results.runtime = GetTime(&start, &end);
+        free_graph(g);
+        print_result(results);
+    }
+    return 0;
 }

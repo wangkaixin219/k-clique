@@ -1,21 +1,10 @@
-//
-// Created by Wang Kaixin on 4/6/22.
-//
-
 #ifndef K_CLIQUE_DEFS_H
 #define K_CLIQUE_DEFS_H
 
-#include <vector>
-#include <map>
-#include <set>
-#include <queue>
-#include <random>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <iostream>
-#include <climits>
 #include <sys/resource.h>
+#include <cstring>
+#include <assert.h>
+#include <random>
 
 #define DEGENERACY      1
 #define DEGREE          2
@@ -23,40 +12,91 @@
 #define LEARNED         4
 #define LEXICOGRAPHIC   5
 
+#define MAX_E       100000      // define for malloc
+#define MAX_V       100000      // define for malloc
+#define MAX_DEG     256         // define for malloc
+
 using namespace std;
 
-typedef struct {
-    unsigned order;     // global order
-    unsigned k;         // global k
-    unsigned n;         // syn n
-    double p;           // syn p
-    string path;        // global path
-} param;
+/*
+ * vertex ranges from 1 to n
+ * edge stores in a list, e = (u, v) direction from u to v
+ * at the beginning, the direction is not the final result
+ */
 
 typedef struct {
-    map<unsigned, set<unsigned>> adj;
-    map<unsigned, unsigned> color, order;
-} graph;
+    unsigned s, t;  // s --> t
+} edge_t;
 
+typedef struct {
+    unsigned idx;
+    unsigned deg;
+    unsigned* adj;
+    unsigned depth;
+} vertex_t;
+
+typedef struct {
+    unsigned N, M, P, D;
+    edge_t* E;
+    vertex_t* V;
+    int* pos;    // map idx to the position id in V
+} graph_t;
+
+typedef struct {
+    unsigned act_size;
+    unsigned* act;
+} mask_t;
 
 typedef struct {
     double runtime;
     unsigned calls, cliques;
-} result;
+} result_t;
 
+typedef struct {
+    unsigned order, k, n;
+    double p;
+    char path[256];
+} param_t;
+
+
+typedef struct {
+    unsigned* l;
+    unsigned head, tail;
+    unsigned max_size;
+} queue_t;
+
+
+typedef struct {
+    queue_t* vq;
+    bool* seen;
+} ff_t;
+
+typedef struct {
+    unsigned key;
+    double value;
+} pair_t;
+
+typedef struct {
+    pair_t* l;
+    unsigned* pos;      // for update
+    unsigned cur_size;
+    unsigned max_size;
+} heap_t;
+
+inline unsigned max3(unsigned a, unsigned b, unsigned c) {
+    a = (a > b) ? a : b;
+    return (a > c) ? a : c;
+}
+
+inline unsigned max2(unsigned a, unsigned b) {
+    return (a > b) ? a : b;
+}
 
 inline int rand_int(int l, int u) {
     random_device rd;
     mt19937_64 gen(rd());
     uniform_int_distribution<> dist(l, u);
     return dist(gen);
-}
-
-inline unsigned rand_select(set<unsigned> candidate) {
-    unsigned n = rand_int(0, candidate.size()-1);
-    set<unsigned>::iterator it = candidate.begin();
-    advance(it, n);
-    return *(it);
 }
 
 inline double rand_real(double l, double u) {
@@ -82,24 +122,42 @@ inline void GetCurTime(struct rusage* curTime) {
 
 inline double GetTime(struct rusage* start, struct rusage* end) {  // unit: ms
     return ((float)(end->ru_utime.tv_sec - start->ru_utime.tv_sec)) * 1e3 +
-                ((float)(end->ru_utime.tv_usec - start->ru_utime.tv_usec)) * 1e-3;
+           ((float)(end->ru_utime.tv_usec - start->ru_utime.tv_usec)) * 1e-3;
 }
 
-        // parser.cpp
-void arg_parser(int argc, const char* argv[], param& parameters);
+        // graph.c
+graph_t* forest_fire(unsigned n, double p);
+void add_edge(graph_t* g, unsigned u, unsigned v);        // add edge to g->E
+void add_vertex(graph_t* g, unsigned idx);              // add vertex to V, update pos
+void add_neighbor(graph_t* g, unsigned u, unsigned v);               // update *.deg and *.adj, u -- v
+void add_direct_neighbor(graph_t* g, unsigned s, unsigned t);         // update *.deg and *.adj, s --> t
+unsigned degree(graph_t* g, unsigned idx);
+unsigned* adj(graph_t* g, unsigned idx);
+void clear(graph_t* g);
+void free_graph(graph_t* g);
+graph_t* read_graph(const char* path);
+void write_graph(const graph_t* g, const char* path);
 
-        // data.cpp
-void read_graph(graph& g, const string& graph_file);
-void syn_graph(graph& g, unsigned n, double p);
-void save_graph(const graph& g, const string& graph_file);
-void print_graph(const graph& g);
-void print_result(const result& res);
+        // k-clique.c
+void ordering(graph_t* g, unsigned type);
+void k_clique(graph_t* g, unsigned l);
 
-        // k-clique.cpp
-void order(graph& g, unsigned type);
-void dag(graph& g);
-graph subgraph(graph& g, unsigned id);
-void k_clique(graph g, set<unsigned>& res, unsigned l);
-
+        //utils.c
+queue_t* construct_queue();
+void free_queue(queue_t* q);
+void push(queue_t* q, unsigned v);
+void pop(queue_t* q);
+unsigned front(queue_t* q);
+bool empty(queue_t* q);
+void print_result(const result_t r);
+void print_progress(unsigned finished, unsigned total);
+void arg_parser(int argc, const char* argv[], param_t* parameters);
+heap_t* construct_heap(unsigned n);
+void free_heap(heap_t* h);
+void insert(heap_t* h, unsigned key, double value);
+void update(heap_t* h, unsigned key);
+void pop(heap_t* h);
+pair_t min_element(heap_t* h);
 
 #endif //K_CLIQUE_DEFS_H
+

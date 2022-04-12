@@ -1,178 +1,228 @@
 #include "defs.h"
 
-extern result results;
+extern result_t results;
+extern param_t parameters;
+unsigned *color, *order;
+mask_t** mask;
 
-void degeneracy_ordering(graph& g) {
-    map<unsigned, set<unsigned>> adj = g.adj;
-    unsigned i = 1;
-    while (!adj.empty()) {
-
-        pair
-
-        unsigned min_u = 0, min_deg = INT_MAX;
-        for (pair<unsigned, set<unsigned>> u_adj : adj) {
-            unsigned u = u_adj.first, deg = adj[u].size();
-            if (deg < min_deg) {
-                min_deg = deg;
-                min_u = u;
+void free_all() {
+    if (order) {
+        free(order);
+        order = nullptr;
+    }
+    if (color) {
+        free(color);
+        color = nullptr;
+    }
+    if (mask) {
+        for (unsigned i = 2; i <= parameters.k; ++i) {
+            if (mask[i]) {
+                free(mask[i]->act);
+                mask[i]->act = nullptr;
+                free(mask[i]);
+                mask[i] = nullptr;
             }
         }
-
-        for (unsigned v : adj[min_u]) {
-            adj[v].erase(min_u);
-        }
-        adj.erase(min_u);
-        g.order[min_u] = i++;
+        free(mask);
+        mask = nullptr;
     }
 }
 
-void degree_ordering(graph& g) {
-    vector<pair<unsigned, unsigned>> V;
-    for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
-        unsigned u = u_adj.first;
-        V.push_back(make_pair(g.adj[u].size(), u));
-    }
-    sort(V.begin(), V.end());
-    for(unsigned i = 0; i < V.size(); i++) {
-        g.order[V[i].second] = i + 1;
-    }
-}
+void degeneracy_ordering(graph_t* g) {
+    order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
+    heap_t* h = construct_heap(g->P + 1);
+    for (unsigned i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].deg);
 
-void random_ordering(graph& g) {
-    set<unsigned> unused;
-    for(unsigned i = 1; i <= g.adj.size(); i++) unused.insert(i);
-    for(pair<unsigned, set<unsigned>> u_adj : g.adj) {
-        unsigned u = u_adj.first, r = rand_select(unused);
-        g.order[u] = r;
-        unused.erase(r);
-    }
-}
 
-void lexicographic_ordering(graph& g) {
-    for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
-        unsigned u = u_adj.first;
-        set<unsigned> adj = u_adj.second;
-        if (!g.order.contains(u)) g.order[u] = u;
-        for (unsigned v : adj) {
-            if (!g.order.contains(v)) g.order[v] = v;
+    for (unsigned i = 1; i <= g->N; ++i) {
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
+        order[u] = i;
+        pop(h);
+        for (unsigned j = 0; j < degree(g, u); ++j) {
+            unsigned v = adj(g, u)[j];
+            update(h, v);
         }
     }
+
+    free_heap(h);
 }
 
+void degree_ordering(graph_t* g) {
+    order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
+    heap_t* h = construct_heap(g->P + 1);
+    for (unsigned i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].deg);
 
-void color(graph& g) {
-    map<unsigned, unsigned> reverse_raw_order;
-    map<unsigned, set<unsigned>> reverse_color;
-
-    for (pair<unsigned, unsigned> u_r : g.order) {
-        unsigned u = u_r.first, r = u_r.second;
-        reverse_raw_order[r] = u;
+    for (unsigned i = 1; i <= g->N; ++i) {
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
+        order[u] = i;
+        pop(h);
     }
-    for (unsigned i = 1; reverse_raw_order.contains(i); i++) {
-        unsigned u = reverse_raw_order[i], c = 1;
-        set<unsigned> used;
-
-        for (unsigned v : g.adj[u]) {
-            if (g.color.contains(v)) used.insert(g.color[v]);
-        }
-
-        while (used.contains(c)) c++;
-        g.color[u] = c;
-        reverse_color[c].insert(u);
-    }
-    g.order.clear();
-    unsigned i = 1;
-    for (unsigned c = 1; reverse_color.contains(c); c++) {
-        for (unsigned u : reverse_color[c]) {
-            g.order[u] = i++;
-        }
-    }
+    free_heap(h);
 }
 
-void order(graph& g, unsigned type) {
+void random_ordering(graph_t* g) {
+    order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
+    heap_t* h = construct_heap(g->P + 1);
+    random_device rd;
+    seed_seq sd{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
+    mt19937_64 gen(sd);
+    uniform_real_distribution<> dist(0, 1);
+
+    for (unsigned i = 0; i < g->N; ++i) insert(h, g->V[i].idx,  dist(gen));
+
+    for (unsigned i = 1; i <= g->N; ++i) {
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
+        order[u] = i;
+        pop(h);
+    }
+    free_heap(h);
+}
+
+void lexicographic_ordering(graph_t* g) {
+    order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
+    heap_t* h = construct_heap(g->P + 1);
+    for (unsigned i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].idx);
+
+    for (unsigned i = 1; i <= g->N; ++i) {
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
+        order[u] = i;
+        pop(h);
+    }
+
+    free_heap(h);
+}
+
+void coloring(graph_t* g) {
+    color = (unsigned*) calloc((g->P+1), sizeof(unsigned));
+    bool* used = (bool*) calloc((g->D+1), sizeof(bool));
+    unsigned* reverse_order = (unsigned*) malloc((g->N + 1) * sizeof(unsigned));
+
+    for (unsigned i = 1; i <= g->P; ++i) if (order[i]) reverse_order[order[i]] = i;
+
+    for (unsigned i = 1; i <= g->N; ++i) {
+        unsigned u = reverse_order[i];
+        for (unsigned j = 0; j < degree(g, u); ++j) {
+            unsigned v = adj(g, u)[j];
+            if (color[v])
+                used[color[v]] = true;
+        }
+
+        unsigned c = 1;
+        while (used[c]) c++;
+        color[u] = c;
+
+        for (unsigned j = 0; j < degree(g, u); ++j) {
+            unsigned v = adj(g, u)[j];
+            if (color[v])
+                used[color[v]] = false;
+        }
+    }
+
+    clear(g);
+    g->D = 0;
+    for (unsigned i = 0; i < g->M; ++i) {
+        unsigned s = g->E[i].s, t = g->E[i].t;
+
+        if (color[s] > color[t]) add_direct_neighbor(g, s, t);
+        else if (color[s] < color[t]) add_direct_neighbor(g, t, s);
+        else printf("Two vertices of edge (%u %u) have same color.\n", s, t);
+
+        g->D = max3(g->D, degree(g, s), degree(g, t));
+    }
+
+    free(used);
+    free(reverse_order);
+}
+
+void ordering(graph_t* g, unsigned type) {
     if (type == DEGENERACY) {
-        printf("Degeneracy based ordering\n");
+        printf("Degeneracy ordering\n");
         degeneracy_ordering(g);
+        printf("Degeneracy ordering finish\n");
     }
     else if (type == DEGREE) {
-        printf("Degree based ordering\n");
+        printf("Degree ordering\n");
         degree_ordering(g);
+        printf("Degree ordering finish\n");
     }
     else if (type == RANDOM) {
-        printf("Random based ordering\n");
+        printf("Random ordering\n");
         random_ordering(g);
+        printf("Random ordering finish\n");
     }
     else if (type == LEARNED) {
         // TODO
     }
     else {
-        printf("Lexicographic based ordering\n");
+        printf("Lexicographic ordering\n");
         lexicographic_ordering(g);
+        printf("Lexicographic ordering finish\n");
     }
 
-    color(g);
+    coloring(g);
+    printf("Max degree = %u after coloring\n", g->D);
 }
 
 
-
-void dag(graph& g) {
-    set<unsigned> empty;
-    for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
-        unsigned u = u_adj.first;
-        set<unsigned> adj = u_adj.second;
-        if (adj.empty()) empty.insert(u);
-
-        for (unsigned v : adj) {
-            if (g.order[u] > g.order[v]) {
-                g.adj[v].erase(u);
-            }
-        }
-    }
-
-    for (unsigned u : empty)
-        g.adj.erase(u);
-}
-
-graph subgraph(graph& g, unsigned id) {
-    graph sub;
-    sub.order = g.order;
-    sub.color = g.color;
-
-    for (unsigned v : g.adj[id]) {
-        set_intersection(g.adj[v].begin(), g.adj[v].end(), g.adj[id].begin(), g.adj[id].end(),
-                         inserter(sub.adj[v], sub.adj[v].begin()));
-    }
-
-    return sub;
-}
-
-void output(set<unsigned>& res, unsigned u, unsigned v) {
-    cout << "Find clique {";
-    for (unsigned r : res)
-        cout << r << " ";
-    cout << u << " " << v << "}." << endl;
-}
-
-
-void k_clique(graph g, set<unsigned>& res, unsigned l) {
+void k_clique(graph_t* g, unsigned l) {
     results.calls++;
+
+    if (l == parameters.k) {
+        mask = (mask_t**) malloc( (l + 1) * sizeof(mask_t*));
+        for (unsigned i = 2; i < l; ++i) {
+            mask[i] = (mask_t*) malloc(sizeof(mask_t));
+            mask[i]->act = (unsigned*) malloc(g->D * sizeof(unsigned));
+        }
+        mask[l] = (mask_t*) malloc(sizeof(mask_t));
+        mask[l]->act_size = g->N;
+        mask[l]->act = (unsigned*) malloc(g->N * sizeof(unsigned));
+        for (unsigned i = 0; i < g->N; ++i) mask[l]->act[i] = g->V[i].idx;
+    }
+
     if (l == 2) {
-        for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
-            unsigned u = u_adj.first;
-            set<unsigned> adj = u_adj.second;
-            for (unsigned v : adj) {
-//                output(res, u, v);
-                results.cliques++;
+
+        for (unsigned i = 0; i < mask[l]->act_size; ++i) {
+            unsigned u = mask[l]->act[i];
+            for (unsigned j = 0; j < degree(g, u); ++j) {
+                unsigned v = adj(g, u)[j];
+                if (g->V[g->pos[v]].depth == l) {
+                    results.cliques++;
+                }
             }
         }
     }
     else {
-        for (pair<unsigned, set<unsigned>> u_adj : g.adj) {
-            unsigned u = u_adj.first;
-            if (g.color[u] < l) continue;
-            res.insert(u);
-            k_clique(subgraph(g, u), res, l - 1);
-            res.erase(u);
+        for (unsigned i = 0; i < mask[l]->act_size; ++i) {
+            unsigned u = mask[l]->act[i];
+
+            if (color[u] < l) continue;
+
+            mask[l - 1]->act_size = 0;
+            for (unsigned j = 0; j < degree(g, u); ++j) {
+                unsigned v = adj(g, u)[j];
+                if (g->V[g->pos[v]].depth == l) {
+                    mask[l - 1]->act[mask[l - 1]->act_size++] = v;
+                    g->V[g->pos[v]].depth--;
+                }
+            }
+
+            k_clique(g, l - 1);
+
+            for (unsigned j = 0; j < mask[l - 1]->act_size; ++j) {
+                unsigned v = mask[l - 1]->act[j];
+                g->V[g->pos[v]].depth++;
+            }
         }
     }
+
+    if (l == parameters.k) free_all();
 }
+
+
+
+
+
