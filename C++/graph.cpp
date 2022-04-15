@@ -1,5 +1,4 @@
 #include "defs.h"
-#include <assert.h>
 
 extern param_t parameters;
 

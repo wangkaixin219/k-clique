@@ -3,6 +3,8 @@
 
 #include <sys/resource.h>
 #include <random>
+#include <assert.h>
+#include <string.h>
 
 #define DEGENERACY      1
 #define DEGREE          2
