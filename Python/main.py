@@ -1,5 +1,4 @@
 from graph import *
-from model import *
 from utils import *
 from brain import *
 import argparse
@@ -26,15 +25,7 @@ parser.add_argument('--gcn', action='store_true')
 # parser.add_argument('--config', type=str, default='./src/experiments.conf')
 args = parser.parse_args()
 
-if torch.cuda.is_available():
-    if not args.cuda:
-        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-    else:
-        device_id = torch.cuda.current_device()
-        print('using device', device_id, torch.cuda.get_device_name(device_id))
 
-device = torch.device("cuda" if args.cuda else "cpu")
-print('DEVICE:', device)
 
 if __name__ == "__main__":
     random.seed(args.seed)
@@ -44,28 +35,9 @@ if __name__ == "__main__":
 
     graph = Graph(args.dataset)
 
-    graph_model = GraphSage(
-        n_nodes=graph.n_nodes,
-        num_layers=args.num_layers,
-        in_size=args.node_emb_size,
-        out_size=args.hidden_emb_size,
-        adj_lists=graph.adj_lists,
-        device=device,
-        gcn=args.gcn,
-        agg_func=args.agg_func)
-    graph_model.to(device)
+    brain = Brain(graph, num_layers=2, emb_size=32, hidden_size=32, batch_size=16, gcn=False, agg_func="MEAN",
+                  lr=1e-3, gamma=0.99, K_epochs=80, eps_clip=0.2)
+    env = Env(graph)
 
-    brain = Brain(
-        state_dim=args.hidden_emb_size,
-        action_dim=graph.n_nodes,
-        device=device,
-        hidden_dim=32,
-        lr_actor=1e-1,
-        lr_critic=1e-1,
-        gamma=0.99,
-        K_epochs=80,
-        eps_clip=0.2
-    )
-
-    train(graph, graph_model, brain, args.batch_size)
+    train(brain, env)
 

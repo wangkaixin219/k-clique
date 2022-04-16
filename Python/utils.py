@@ -10,37 +10,26 @@ from sklearn.metrics import f1_score
 
 from env import *
 
-def train(graph, graph_model, brain, batch_size):
-    all_nodes = np.arange(graph.n_nodes)
-    env = Env(graph)
-    epoch = 1
-    n_epoch = 10000
+def train(brain, env):
+    epoch, n_epoch = 1, 10000
 
     while epoch <= n_epoch:
-        env.reset()
-        batches = math.ceil(len(all_nodes) / batch_size)
-
-        for index in range(batches):
-            batch_nodes = all_nodes[index*batch_size:(index+1)*batch_size]
-            batch_embeddings = graph_model(batch_nodes)
-            if index == 0:
-                embeddings = batch_embeddings
-            else:
-                embeddings = torch.cat((embeddings, batch_embeddings), dim=0)
-        
-        print(embeddings)
+        state = env.reset()
+        brain.calm_down()
 
         while not env.done:
-            state = torch.mean(embeddings[env.act_index], dim=0)
-            action = brain.select_action(state, env.mask)
-            env.step(action)
+            action = brain.select_action(state)
+            state = env.step(action)
 
         reward = env.calculate_reward()
-        print("Epoch {}: reward {}".format(epoch, reward))
+        print("******************** Epoch [{}/{}] ********************".format(epoch, n_epoch))
+        print("Reward = {}".format(reward))
         brain.buffer.fill(reward)
         brain.update()
 
         epoch += 1
+
+        print("*******************************************************\n")
 
 
 
