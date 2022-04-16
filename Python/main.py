@@ -10,11 +10,11 @@ import torch
 parser = argparse.ArgumentParser(description='pytorch version of GraphSAGE')
 parser.add_argument('--dataset', type=str, default='syn')
 parser.add_argument('--num_layers', type=int, default=2)
-parser.add_argument('--node_emb_size', type=int, default=5)
-parser.add_argument('--hidden_emb_size', type=int, default=10)
+parser.add_argument('--node_emb_size', type=int, default=32)
+parser.add_argument('--hidden_emb_size', type=int, default=32)
 parser.add_argument('--agg_func', type=str, default='MEAN')
-parser.add_argument('--epochs', type=int, default=50)
-parser.add_argument('--batch_size', type=int, default=5)
+parser.add_argument('--epochs', type=int, default=1000)
+parser.add_argument('--batch_size', type=int, default=200)
 parser.add_argument('--seed', type=int, default=111)
 parser.add_argument('--cuda', action='store_true', help='use CUDA')
 parser.add_argument('--gcn', action='store_true')
@@ -59,9 +59,9 @@ if __name__ == "__main__":
         state_dim=args.hidden_emb_size,
         action_dim=graph.n_nodes,
         device=device,
-        hidden_dim=20,
-        lr_actor=1e-4,
-        lr_critic=1e-3,
+        hidden_dim=32,
+        lr_actor=1e-1,
+        lr_critic=1e-1,
         gamma=0.99,
         K_epochs=80,
         eps_clip=0.2

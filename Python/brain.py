@@ -16,12 +16,12 @@ class Memory(object):
         return len(self.states)
 
     def fill(self, reward, gamma=0.9):
-        size = self.size()
-        reward *= 1 - gamma
-        while len(self.rewards) < size:
-            self.rewards.append(reward)
-            reward *= gamma
-
+#        size = self.size()
+#        reward *= 1 - gamma
+#        while len(self.rewards) < size:
+#            self.rewards.append(reward)
+#            reward *= gamma
+        self.rewards = [reward] * self.size()
         self.done = [False] * self.size()
         self.done[-1] = True
 
@@ -89,7 +89,6 @@ class Brain(object):
 
     def select_action(self, state, mask=None):
         with torch.no_grad():
-            state = torch.FloatTensor(state).to(self.device)
             mask = torch.LongTensor(mask).to(self.device)
             action, action_logprob = self.policy_old.act(state, mask)
         self.buffer.states.append(state)

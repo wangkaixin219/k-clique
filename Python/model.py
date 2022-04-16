@@ -39,6 +39,8 @@ class GraphSage(nn.Module):
         self.adj_lists = adj_lists
 
         self.emb_layer = nn.Embedding(n_nodes, in_size)
+        nn.init.xavier_uniform_(self.emb_layer.weight)
+
         for index in range(1, self.num_layers+1):
             layer_size = out_size if index != 1 else in_size
             setattr(self, 'sage_layer'+str(index), SageLayer(layer_size, out_size, gcn=False))
@@ -63,7 +65,8 @@ class GraphSage(nn.Module):
                 nb = self._nodes_map(nb, pre_hidden_embs, pre_neighs)
             pre_hidden_embs = sage_layer(self_feat=pre_hidden_embs[nb], agg_feat=agg_feat)
 
-        return torch.sum(pre_hidden_embs, dim=0)
+#        return torch.sum(pre_hidden_embs, dim=0)
+        return pre_hidden_embs
 
     def _nodes_map(self, nodes, hidden_embs, neighs):
         layer_nodes, samp_neighs, layer_nodes_dict = neighs

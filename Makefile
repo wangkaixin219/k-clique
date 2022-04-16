@@ -5,4 +5,5 @@ all:
 
 clean:
 	rm Python/k-clique
+	rm -rf Python/__pycache__
 	make -C C++/ clean
