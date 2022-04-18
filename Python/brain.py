@@ -36,13 +36,14 @@ class Memory(object):
     def size(self):
         return len(self.states)
 
-    def fill(self, reward, gamma=0.9):
-        # size = self.size()
-        # reward *= 1 - gamma
-        # while len(self.rewards) < size:
-        #    self.rewards.append(reward)
-        #    reward *= gamma
-        self.rewards = [reward] * self.size()
+    def fill(self, reward, gamma=0.99):
+        size = self.size()
+        reward *= 1 - gamma
+        while len(self.rewards) < size:
+            self.rewards.append(reward)
+            if np.abs(reward) > 1e-2:
+                reward *= gamma
+        # self.rewards = [reward] * self.size()
         self.done = [False] * self.size()
         self.done[-1] = True
 
@@ -171,8 +172,8 @@ class ActorCritic(nn.Module):
         self.embeddings = None
 
         self.graph_sage = GraphSage(graph, num_layers, emb_size, gcn, agg_func)
-        self.actor = nn.Sequential(nn.Linear(emb_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, self.n_nodes))
-        self.critic = nn.Sequential(nn.Linear(emb_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))
+        self.actor = nn.Sequential(nn.Linear(emb_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, self.n_nodes))
+        self.critic = nn.Sequential(nn.Linear(emb_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, 1))
 
     def _emb(self):
         all_nodes = np.arange(self.n_nodes)
@@ -186,8 +187,8 @@ class ActorCritic(nn.Module):
         if self.embeddings is None:
             self._emb()
 
-        index = np.where(state == 1)[0]
-        embedding = torch.mean(self.embeddings[index], dim=0)
+        index = np.where(state.cpu() == 1)[0]
+        embedding = torch.mean(self.embeddings[index], dim=0).to(device)
         score = self.actor(embedding)
         score = score.masked_fill(state == 0, -1e9)
 
@@ -200,9 +201,9 @@ class ActorCritic(nn.Module):
     def evaluate(self, states, actions):
         self._emb()
 
-        indices = [np.where(state == 1)[0] for state in states]
+        indices = [np.where(state.cpu() == 1)[0] for state in states]
         embedding = [torch.mean(self.embeddings[index], dim=0) for index in indices]
-        embedding = torch.stack(embedding)
+        embedding = torch.stack(embedding).to(device)
         score = self.actor(embedding)
         score = score.masked_fill(states == 0, -1e9)
 
@@ -220,13 +221,17 @@ class ActorCritic(nn.Module):
 
 class Brain(object):
     def __init__(self, graph, num_layers=2, emb_size=32, hidden_size=32, batch_size=16, gcn=False, agg_func="MEAN",
-                 lr=1e-2, gamma=0.99, K_epochs=80, eps_clip=0.2):
+                 lr=1e-2, gamma=0.99, K_epochs=10, eps_clip=0.2):
 
         self.policy = ActorCritic(graph, num_layers, emb_size, hidden_size, batch_size, gcn, agg_func).to(device)
         self.policy_old = ActorCritic(graph, num_layers, emb_size, hidden_size, batch_size, gcn, agg_func).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
 
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam([
+                {'params': self.policy.graph_sage.parameters(), 'lr': 0.01},
+                {'params': self.policy.actor.parameters(), 'lr': 0.01},
+                {'params': self.policy.critic.parameters(), 'lr': 0.01},
+        ])
         self.MseLoss = nn.MSELoss()
 
         self.gamma = gamma
@@ -258,6 +263,7 @@ class Brain(object):
 
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
+        print(rewards)
 
         old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device)
         old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
@@ -278,7 +284,7 @@ class Brain(object):
             loss.mean().backward()
             self.optimizer.step()
 
-            print("*** Update [{}/{}] Loss = {} ***".format(i, self.K_epochs, loss.mean().item()))
+            print("*** Update [{}/{}] Loss = {} ***".format(i+1, self.K_epochs, loss.mean().item()))
 
         self.policy_old.load_state_dict(self.policy.state_dict())
         self.buffer.clear()

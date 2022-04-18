@@ -7,7 +7,6 @@ import torch.nn as nn
 import numpy as np
 from sklearn.utils import shuffle
 from sklearn.metrics import f1_score
-
 from env import *
 
 def train(brain, env):
@@ -16,15 +15,18 @@ def train(brain, env):
     while epoch <= n_epoch:
         state = env.reset()
         brain.calm_down()
-
+        rewards = 0
         while not env.done:
             action = brain.select_action(state)
-            state = env.step(action)
+            reward, state, done = env.step(action)
+            brain.buffer.rewards.append(reward)
+            brain.buffer.done.append(done)
+            rewards += reward
 
-        reward = env.calculate_reward()
+        calls = env.calculate_calls()
         print("******************** Epoch [{}/{}] ********************".format(epoch, n_epoch))
-        print("Reward = {}".format(reward))
-        brain.buffer.fill(reward)
+        print("Rewards = {}, Calls = {}".format(rewards, calls))
+        # brain.buffer.fill(reward)
         brain.update()
 
         epoch += 1

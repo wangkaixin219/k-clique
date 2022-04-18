@@ -17,6 +17,7 @@ parser.add_argument('--batch_size', type=int, default=200)
 parser.add_argument('--seed', type=int, default=111)
 parser.add_argument('--cuda', action='store_true', help='use CUDA')
 parser.add_argument('--gcn', action='store_true')
+parser.add_argument('--k', type=int, default=3)
 
 # parser.add_argument('--learn_method', type=str, default='sup')
 # parser.add_argument('--unsup_loss', type=str, default='normal')
@@ -35,9 +36,9 @@ if __name__ == "__main__":
 
     graph = Graph(args.dataset)
 
-    brain = Brain(graph, num_layers=2, emb_size=32, hidden_size=32, batch_size=16, gcn=False, agg_func="MEAN",
-                  lr=1e-3, gamma=0.99, K_epochs=80, eps_clip=0.2)
-    env = Env(graph)
+    brain = Brain(graph, num_layers=2, emb_size=128, hidden_size=128, batch_size=16, gcn=False, agg_func="MEAN",
+                  lr=1e-3, gamma=0.99, K_epochs=10, eps_clip=0.2)
+    env = Env(graph, args.k)
 
     train(brain, env)
 
