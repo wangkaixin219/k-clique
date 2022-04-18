@@ -2,7 +2,7 @@ SRC := $(shell find . -name "*.cpp")
 INC := $(shell find . -name "*.h")
 OBJ := $(SRC:.cpp=.o)
 CXX := g++
-CFLAGS := -std=c++2a -Wall -O3 -g
+CFLAGS := -std=c++11 -Wall -O3 -g
 
 
 all: $(OBJ)

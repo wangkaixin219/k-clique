@@ -20,7 +20,8 @@ class Env(object):
         self.state = None
         self.done = None
         self.color_dict = None
-        self.max_color = None
+        self.deg = None
+        self.max_deg = None
         self.reset()
 
     def reset(self):
@@ -29,7 +30,8 @@ class Env(object):
         self.state = [1] * self.n_nodes
         self.done = False
         self.color_dict = dict()
-        self.max_color = 1
+        self.deg = dict()
+        self.max_deg = 0
         return self.state
 
     def calls(self, cmd):
@@ -53,7 +55,23 @@ class Env(object):
         while color in used_color:
             color += 1
         self.color_dict[action] = color
-        reward = 1 if color < self.k else 0
+        
+        self.deg[action] = 0
+        max_deg = self.max_deg
+        for node in self.adj_lists[action]:
+            if node not in self.color_dict:
+                continue
+            elif self.color_dict[node] > color:
+                self.deg[node] += 1
+                max_deg = self.deg[node] if self.deg[node] > max_deg else max_deg
+            elif self.color_dict[node] < color:
+                self.deg[action] += 1
+                max_deg = self.deg[action] if self.deg[action] > max_deg else max_deg
+            else:
+                print("Error: two neighbors have same color")
+        reward = self.max_deg - max_deg
+        self.max_deg = max_deg
+
         self.done = not np.any(self.state)
 
         if self.done:

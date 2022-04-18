@@ -107,6 +107,7 @@ void coloring(graph_t* g) {
     color = (unsigned*) calloc((g->P+1), sizeof(unsigned));
     bool* used = (bool*) calloc((g->D+1), sizeof(bool));
     unsigned* reverse_order = (unsigned*) malloc((g->N + 1) * sizeof(unsigned));
+    unsigned max_color = 1;
 
     for (int i = 1; i <= g->P; ++i) if (order[i]) reverse_order[order[i]] = i;
 
@@ -121,6 +122,7 @@ void coloring(graph_t* g) {
         unsigned c = 1;
         while (used[c]) c++;
         color[u] = c;
+        max_color = c > max_color ? c : max_color;
 
         for (int j = 0; j < degree(g, u); ++j) {
             unsigned v = adj(g, u)[j];
@@ -140,6 +142,8 @@ void coloring(graph_t* g) {
 
         g->D = max3(g->D, degree(g, s), degree(g, t));
     }
+
+    printf("Max degree = %u after coloring (used %u colors)\n", g->D, max_color);
 
     free(used);
     free(reverse_order);
@@ -176,7 +180,6 @@ void ordering(graph_t* g, unsigned type) {
     }
 
     coloring(g);
-    printf("Max degree = %u after coloring\n", g->D);
 }
 
 

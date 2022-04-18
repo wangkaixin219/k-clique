@@ -36,17 +36,6 @@ class Memory(object):
     def size(self):
         return len(self.states)
 
-    def fill(self, reward, gamma=0.99):
-        size = self.size()
-        reward *= 1 - gamma
-        while len(self.rewards) < size:
-            self.rewards.append(reward)
-            if np.abs(reward) > 1e-2:
-                reward *= gamma
-        # self.rewards = [reward] * self.size()
-        self.done = [False] * self.size()
-        self.done[-1] = True
-
     def clear(self):
         del self.actions[:]
         del self.states[:]
@@ -183,7 +172,7 @@ class ActorCritic(nn.Module):
             batch_embeddings = self.graph_sage(batch_nodes)
             self.embeddings = batch_embeddings if index == 0 else torch.cat((self.embeddings, batch_embeddings), dim=0)
 
-    def act(self, state):
+    def act(self, state, prob):
         if self.embeddings is None:
             self._emb()
 
@@ -194,7 +183,7 @@ class ActorCritic(nn.Module):
 
         action_probs = F.softmax(score, dim=-1)
         dist = Categorical(action_probs)
-        action = dist.sample()
+        action = dist.sample() if random.random() < prob else torch.argmax(action_probs)
         action_logprob = dist.log_prob(action)
         return action.detach(), action_logprob.detach()
 
@@ -243,10 +232,10 @@ class Brain(object):
         self.policy.embeddings = None
         self.policy_old.embeddings = None
 
-    def select_action(self, state):
+    def select_action(self, state, prob=0.4):
         with torch.no_grad():
             state = torch.LongTensor(state).to(device)
-            action, action_logprob = self.policy_old.act(state)
+            action, action_logprob = self.policy_old.act(state, prob)
         self.buffer.states.append(state)
         self.buffer.actions.append(action)
         self.buffer.logprobs.append(action_logprob)
@@ -265,20 +254,27 @@ class Brain(object):
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
         print(rewards)
 
-        old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device)
-        old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
-        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
+        states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device)
+        actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
+        logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
 
         for i in range(self.K_epochs):
-            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+            rand_idx = random.sample(range(self.buffer.size()), 128)
+
+            old_rewards = rewards[rand_idx]
+            old_states = states[rand_idx]
+            old_actions = actions[rand_idx]
+            old_logprobs = logprobs[rand_idx]
+
+            logprobs_, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
 
             state_values = torch.squeeze(state_values)
-            ratios = torch.exp(logprobs - old_logprobs.detach())
+            ratios = torch.exp(logprobs_ - old_logprobs.detach())
 
-            advantages = rewards - state_values.detach()
+            advantages = old_rewards - state_values.detach()
             surr1 = ratios * advantages
             surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
-            loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, rewards) - 0.01 * dist_entropy
+            loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, old_rewards) - 0.01 * dist_entropy
 
             self.optimizer.zero_grad()
             loss.mean().backward()

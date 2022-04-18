@@ -29,16 +29,12 @@ args = parser.parse_args()
 
 
 if __name__ == "__main__":
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+#    random.seed(args.seed)
+#    np.random.seed(args.seed)
+#    torch.manual_seed(args.seed)
+#    torch.cuda.manual_seed_all(args.seed)
 
     graph = Graph(args.dataset)
 
-    brain = Brain(graph, num_layers=2, emb_size=128, hidden_size=128, batch_size=16, gcn=False, agg_func="MEAN",
-                  lr=1e-3, gamma=0.99, K_epochs=10, eps_clip=0.2)
-    env = Env(graph, args.k)
-
-    train(brain, env)
+    train(graph, args)
 
