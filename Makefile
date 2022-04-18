@@ -5,5 +5,6 @@ all:
 
 clean:
 	rm Python/k-clique
+	rm Python/best.pt
 	rm -rf Python/__pycache__
 	make -C C++/ clean
