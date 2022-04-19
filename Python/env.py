@@ -4,11 +4,12 @@ import re
 
 
 class Env(object):
-    def __init__(self, graph, k):
+    def __init__(self, graph, k, dim=10):
         self.n_nodes = graph.n_nodes
         self.reverse_node_map = graph.reverse_node_map
         self.adj_lists = graph.adj_lists
         self.name = graph.name
+        self.dim = dim
         
         self.k = k
         self.pattern = re.compile(r'calls[\t| ]*(\d+),')
@@ -16,22 +17,18 @@ class Env(object):
         self.learn_cmd = "./k-clique -r " + str(self.name) + " -k " + str(self.k) + " -o learned"
 
         self.order = None
-        self.act_index = None
         self.state = None
         self.done = None
-        self.color_dict = None
         self.deg = None
-        self.max_deg = None
+        self.indices = None
         self.reset()
 
     def reset(self):
         self.order = []
-        self.act_index = list(range(self.n_nodes))
-        self.state = [1] * self.n_nodes
         self.done = False
-        self.color_dict = dict()
-        self.deg = dict()
-        self.max_deg = 0
+        self.deg = np.array([len(self.adj_lists[i]) for i in range(self.n_nodes)])
+        self.indices = np.argsort(self.deg)[::-1][:self.dim]
+        self.state = self.deg[self.indices]
         return self.state
 
     def calls(self, cmd):
@@ -40,47 +37,28 @@ class Env(object):
         return int(res[0])
 
     def step(self, action):
-        self.order.append(action)
-        self.act_index.remove(action)
-        self.state[action] = 0
+        tgt_node = self.indices[action]
+        self.order.append(tgt_node)
+        self.deg[tgt_node] = -1
 
-        used_color = set()
-        for node in self.adj_lists[action]:
-            if node not in self.color_dict:
+        for inf_node in self.adj_lists[tgt_node]:
+            if self.deg[inf_node] == -1:
                 continue
-            else:
-                used_color.add(self.color_dict[node])
+            assert self.deg[inf_node] > 0
+            self.deg[inf_node] -= 1
 
-        color = 1
-        while color in used_color:
-            color += 1
-        self.color_dict[action] = color
-        
-        self.deg[action] = 0
-        max_deg = self.max_deg
-        for node in self.adj_lists[action]:
-            if node not in self.color_dict:
-                continue
-            elif self.color_dict[node] > color:
-                self.deg[node] += 1
-                max_deg = self.deg[node] if self.deg[node] > max_deg else max_deg
-            elif self.color_dict[node] < color:
-                self.deg[action] += 1
-                max_deg = self.deg[action] if self.deg[action] > max_deg else max_deg
-            else:
-                print("Error: two neighbors have same color")
-        reward = self.max_deg - max_deg
-        self.max_deg = max_deg
-
-        self.done = not np.any(self.state)
+        self.indices = np.argsort(self.deg)[::-1][:self.dim]
+        self.state = self.deg[self.indices]
+        self.done = self.state[0] == -1
+        reward = 0
 
         if self.done:
             with open("./data/" + self.name + ".order", "w") as f:
                 for node_index in self.order:
                     f.write(str(self.reverse_node_map[node_index]) + "\n")
+            reward += self.calculate_calls()
         
         return reward, self.state, self.done
 
     def calculate_calls(self):
         return self.calls(self.base_cmd) - self.calls(self.learn_cmd)
-
