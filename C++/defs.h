@@ -150,7 +150,7 @@ void free_heap(heap_t* h);
 void insert(heap_t* h, unsigned key, double value);
 void update(heap_t* h, unsigned key);
 void pop(heap_t* h);
-pair_t min_element(heap_t* h);
+pair_t max_element(heap_t* h);
 
 #endif //K_CLIQUE_DEFS_H
 

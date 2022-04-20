@@ -31,11 +31,11 @@ void free_all() {
 void degeneracy_ordering(graph_t* g) {
     order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
     heap_t* h = construct_heap(g->P + 1);
-    for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].deg);
+    for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, g->V[i].deg);
 
 
     for (int i = 1; i <= g->N; ++i) {
-        unsigned u = min_element(h).key;
+        unsigned u = max_element(h).key;
         order[u] = i;
         pop(h);
         for (int j = 0; j < degree(g, u); ++j) {
@@ -50,10 +50,10 @@ void degeneracy_ordering(graph_t* g) {
 void degree_ordering(graph_t* g) {
     order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
     heap_t* h = construct_heap(g->P + 1);
-    for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].deg);
+    for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, g->V[i].deg);
 
     for (int i = 1; i <= g->N; ++i) {
-        unsigned u = min_element(h).key;
+        unsigned u = max_element(h).key;
         order[u] = i;
         pop(h);
     }
@@ -71,7 +71,7 @@ void random_ordering(graph_t* g) {
     for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx,  dist(gen));
 
     for (int i = 1; i <= g->N; ++i) {
-        unsigned u = min_element(h).key;
+        unsigned u = max_element(h).key;
         order[u] = i;
         pop(h);
     }
@@ -84,7 +84,7 @@ void lexicographic_ordering(graph_t* g) {
     for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].idx);
 
     for (int i = 1; i <= g->N; ++i) {
-        unsigned u = min_element(h).key;
+        unsigned u = max_element(h).key;
         order[u] = i;
         pop(h);
     }

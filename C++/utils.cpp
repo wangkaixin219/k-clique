@@ -77,7 +77,7 @@ void swap(heap_t* h, unsigned i, unsigned j) {
 }
 
 void bubble_up(heap_t* h, unsigned i) {
-    while (i > 0 && h->l[i].value < h->l[parent(i)].value) {
+    while (i > 0 && h->l[i].value > h->l[parent(i)].value) {
         swap(h, i, parent(i));
         i = parent(i);
     }
@@ -87,7 +87,7 @@ void bubble_down(heap_t* h, unsigned i) {
     unsigned l = left_child(i), r = right_child(i);
 
     while (l < h->cur_size) {
-        unsigned child = (r < h->cur_size) && (h->l[r].value < h->l[l].value) ? r : l;
+        unsigned child = (r < h->cur_size) && (h->l[r].value > h->l[l].value) ? r : l;
         if (h->l[i].value < h->l[child].value) {
             swap(h, i, child);
             i = child, l = left_child(i), r = right_child(i);
@@ -120,11 +120,11 @@ void update(heap_t* h, unsigned key) {
     unsigned i = h->pos[key];
     if (i != -1) {
         h->l[i].value--;
-        bubble_up(h, i);
+        bubble_down(h, i);
     }
 }
 
-pair_t min_element(heap_t* h) {
+pair_t max_element(heap_t* h) {
     return h->l[0];
 }
 
