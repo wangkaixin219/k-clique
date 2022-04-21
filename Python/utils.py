@@ -1,11 +1,12 @@
 from brain import *
 from env import *
+import time
 
-dim = 100
+dim = 3
 
 
 def train(graph, args):
-    brain = Brain(state_dim=dim, action_dim=dim, hidden_dim=32, batch_size=128, gamma=0.99, K_epochs=80, eps_clip=0.2)
+    brain = Brain(state_dim=dim, action_dim=dim, hidden_dim=20, batch_size=128, gamma=0.99, K_epochs=5, eps_clip=0.2)
     env = Env(graph, args.k, dim=dim)
     
     epoch, n_epoch = 1, 10000
@@ -17,12 +18,20 @@ def train(graph, args):
         state = env.reset()
 
         rewards = 0
+        i = 1
+        t = 0
         while not env.done:
+            if i % 10000 == 0:
+                print(i, t)
+                t = 0
+            i += 1
+            start = time.time()
             action = brain.select_action(state, prob=prob)
             reward, state, done = env.step(action)
             brain.buffer.rewards.append(reward)
             brain.buffer.done.append(done)
             rewards += reward
+            t += time.time() - start
 
         calls = env.calculate_calls()
         brain.buffer.rewards[-1] += calls
@@ -45,7 +54,7 @@ def train(graph, args):
 
 
 def validate(graph, args):
-    brain = Brain(state_dim=dim, action_dim=dim, hidden_dim=32, batch_size=128, gamma=0.99, K_epochs=80, eps_clip=0.2)
+    brain = Brain(state_dim=dim, action_dim=dim, hidden_dim=20, batch_size=128, gamma=0.99, K_epochs=5, eps_clip=0.2)
     env = Env(graph, args.k, dim=dim)
     
     brain.load('best.pt')

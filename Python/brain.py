@@ -57,7 +57,7 @@ class ActorCritic(nn.Module):
 
     def act(self, state, prob):
         score = self.actor(state)
-        score = score.masked_fill(state == -1, -1e9)
+        score = score.masked_fill(state < 0, -1e9)
         action_probs = F.softmax(score, dim=-1)
         dist = Categorical(action_probs)
         action = dist.sample() if random.random() < prob else torch.argmax(action_probs)
@@ -66,7 +66,7 @@ class ActorCritic(nn.Module):
 
     def evaluate(self, states, actions):
         scores = self.actor(states)
-        scores = scores.masked_fill(states == -1, -1e9)
+        scores = scores.masked_fill(states < 0, -1e9)
         action_probs = F.softmax(scores, dim=-1)
         dist = Categorical(action_probs)
         action_logprobs = dist.log_prob(actions)
@@ -87,8 +87,8 @@ class Brain(object):
         self.policy_old.load_state_dict(self.policy.state_dict())
 
         self.optimizer = torch.optim.Adam([
-                {'params': self.policy.actor.parameters(), 'lr': 0.01},
-                {'params': self.policy.critic.parameters(), 'lr': 0.01},
+                {'params': self.policy.actor.parameters(), 'lr': 1e-4},
+                {'params': self.policy.critic.parameters(), 'lr': 1e-3},
         ])
         self.MseLoss = nn.MSELoss()
 
@@ -121,26 +121,31 @@ class Brain(object):
         states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach()
         actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach()
         logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach()
+        batches = math.ceil(self.buffer.size() / self.batch_size)
 
         for i in range(self.K_epochs):
-            rand_idx = random.sample(range(self.buffer.size()), 128)
-            old_states, old_actions, old_rewards, old_logprobs = \
-                states[rand_idx].to(device), actions[rand_idx].to(device), rewards[rand_idx].to(device), logprobs[rand_idx].to(device)
-            logprobs_, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+            loss_epoch = 0
+            for index in range(batches):
+                old_states = states[index * self.batch_size: (index + 1) * self.batch_size].to(device)
+                old_actions = actions[index * self.batch_size: (index + 1) * self.batch_size].to(device)
+                old_rewards = rewards[index * self.batch_size: (index + 1) * self.batch_size].to(device)
+                old_logprobs = logprobs[index * self.batch_size: (index + 1) * self.batch_size].to(device)
 
-            state_values = torch.squeeze(state_values)
-            ratios = torch.exp(logprobs_ - old_logprobs.detach())
+                logprobs_, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
 
-            advantages = old_rewards - state_values.detach()
-            surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
-            loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, old_rewards) - 0.01 * dist_entropy
+                state_values = torch.squeeze(state_values)
+                ratios = torch.exp(logprobs_ - old_logprobs.detach())
 
-            self.optimizer.zero_grad()
-            loss.mean().backward()
-            self.optimizer.step()
+                advantages = old_rewards - state_values.detach()
+                surr1 = ratios * advantages
+                surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
+                loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, old_rewards) - 0.01 * dist_entropy
+                loss_epoch += loss.mean().item()
 
-            print("*** Update [{}/{}] Loss = {} ***".format(i+1, self.K_epochs, loss.mean().item()))
+                self.optimizer.zero_grad()
+                loss.mean().backward()
+                self.optimizer.step()
+            print("*** Update Round [{}/{}] Loss = {} ***".format(i + 1, self.K_epochs, loss_epoch))
 
         self.policy_old.load_state_dict(self.policy.state_dict())
         self.buffer.clear()

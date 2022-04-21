@@ -30,4 +30,4 @@ class Graph(object):
                 self.adj_lists[self.node_map[u]].add(self.node_map[v])
                 self.adj_lists[self.node_map[v]].add(self.node_map[u])
                 self.n_edges += 1
-        print("Finish loading {}.edges".format(self.name))
+        print("Finish loading {}.edges, |V| = {}, |E| = {}".format(self.name, self.n_nodes, self.n_edges))

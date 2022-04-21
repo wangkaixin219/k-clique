@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import re
+from heap import *
 
 
 class Env(object):
@@ -19,16 +20,33 @@ class Env(object):
         self.order = None
         self.state = None
         self.done = None
-        self.deg = None
+        self.max_deg = None
+        self.heap = None
         self.indices = None
+        self.deg = None
+        self.cur_max = None
+        self.cur_deg = None
+        self.color_dict = None
         self.reset()
 
     def reset(self):
         self.order = []
         self.done = False
-        self.deg = np.array([len(self.adj_lists[i]) for i in range(self.n_nodes)])
-        self.indices = np.argsort(self.deg)[::-1][:self.dim]
-        self.state = self.deg[self.indices]
+        self.heap = MaxHeap(self.n_nodes)
+        
+        for i in range(self.n_nodes):
+            deg = len(self.adj_lists[i])
+            self.heap.insert(elem=[i, deg])
+
+        self.max_deg = self.heap.max_elem()[1]
+        self.top_k = self.heap.top_k(self.dim)
+        self.indices = np.array([elem[0] for elem in self.top_k])
+        self.deg = np.array([elem[1] for elem in self.top_k])
+        self.state = self.deg / self.max_deg
+
+        self.color_dict = dict()
+        self.cur_deg = [0] * self.n_nodes
+        self.cur_max = 0
         return self.state
 
     def calls(self, cmd):
@@ -39,18 +57,43 @@ class Env(object):
     def step(self, action):
         tgt_node = self.indices[action]
         self.order.append(tgt_node)
-        self.deg[tgt_node] = -1
 
-        for inf_node in self.adj_lists[tgt_node]:
-            if self.deg[inf_node] == -1:
+        for i in range(self.dim):
+            elem = [self.indices[i], -self.max_deg] if action == i else [self.indices[i], self.deg[i]]
+            self.heap.insert(elem)
+
+        for node in self.adj_lists[tgt_node]:
+            self.heap.update(node)
+
+        used_color = set()
+        for node in self.adj_lists[tgt_node]:
+            if node in self.color_dict:
+                used_color.add(self.color_dict[node])
+
+        color = 1
+        while color in used_color:
+            color += 1
+        self.color_dict[tgt_node] = color
+        
+        cur_max = self.cur_max
+        for node in self.adj_lists[tgt_node]:
+            if node not in self.color_dict:
                 continue
-            assert self.deg[inf_node] > 0
-            self.deg[inf_node] -= 1
+            elif self.color_dict[node] > color:
+                self.cur_deg[node] += 1
+                cur_max = self.cur_deg[node] if self.cur_deg[node] > cur_max else cur_max
+            elif self.color_dict[node] < color:
+                cur_max = self.cur_deg[tgt_node] if self.cur_deg[tgt_node] > cur_max else cur_max
+            else:
+                print("Error: two neighbors have same color")
+        reward = self.cur_max - cur_max
+        self.cur_max = cur_max
 
-        self.indices = np.argsort(self.deg)[::-1][:self.dim]
-        self.state = self.deg[self.indices]
-        self.done = self.state[0] == -1
-        reward = 0
+        self.top_k = self.heap.top_k(self.dim)
+        self.indices = np.array([elem[0] for elem in self.top_k])
+        self.deg = np.array([elem[1] for elem in self.top_k])
+        self.state = self.deg / self.max_deg
+        self.done = self.state[0] < 0
 
         if self.done:
             with open("./data/" + self.name + ".order", "w") as f:
