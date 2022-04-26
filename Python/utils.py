@@ -2,7 +2,7 @@ from brain import *
 from env import *
 import time
 
-dim = 3
+dim = 10
 
 
 def train(graph, args):

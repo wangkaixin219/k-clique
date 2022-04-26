@@ -62,9 +62,6 @@ class Env(object):
             elem = [self.indices[i], -self.max_deg] if action == i else [self.indices[i], self.deg[i]]
             self.heap.insert(elem)
 
-        for node in self.adj_lists[tgt_node]:
-            self.heap.update(node)
-
         used_color = set()
         for node in self.adj_lists[tgt_node]:
             if node in self.color_dict:

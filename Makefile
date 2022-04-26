@@ -4,7 +4,5 @@ all:
 	cp C++/k-clique Python/
 
 clean:
-	rm Python/k-clique
-	rm Python/best.pt
-	rm -rf Python/__pycache__
+	make -C Python/ clean
 	make -C C++/ clean

@@ -48,11 +48,6 @@ class MaxHeap(object):
         self.pos[self.heap[0][0]] = 0
         self._bubble_down(0)
 
-    def update(self, key):
-        i = self.pos[key]
-        self.heap[i][1] -= 1
-        self._bubble_down(i)
-
     def clear(self):
         self.heap = [None] * self.n
         self.pos = [-1] * self.n
