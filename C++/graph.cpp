@@ -1,4 +1,5 @@
 #include "defs.h"
+#include <assert.h>
 
 extern param_t parameters;
 
@@ -10,7 +11,7 @@ ff_t* construct_ff(unsigned n) {
 }
 
 void reset_ff(ff_t* ff) {
-    for (unsigned k = 0; k < ff->vq->tail; ++k) {
+    for (int k = 0; k < ff->vq->tail; ++k) {
         ff->seen[ff->vq->l[k]] = false;
     }
     ff->vq->head = ff->vq->tail = 0;
@@ -22,7 +23,7 @@ void free_ff(ff_t* ff) {
 }
 
 void clear(graph_t* g) {
-    for (unsigned i = 0; i < g->N; ++i) {
+    for (int i = 0; i < g->N; ++i) {
         if (g->V[i].deg) {
             free(g->V[i].adj);
             g->V[i].adj = nullptr;
@@ -92,7 +93,7 @@ graph_t* forest_fire(unsigned n, double p) {
     memset(g->pos, -1, (n+1) * sizeof(int));
     g->N = g->M = 0;
 
-    for (unsigned idx = 1; idx <= n; ++idx) {
+    for (int idx = 1; idx <= n; ++idx) {
         print_progress(idx, n);
         add_vertex(g, idx);
 
@@ -105,7 +106,7 @@ graph_t* forest_fire(unsigned n, double p) {
                 unsigned u = front(ff->vq), link = rand_geo(p);
 
                 if (degree(g, u) <= link) {
-                    for (unsigned j = 0; j < degree(g, u); ++j) {
+                    for (int j = 0; j < degree(g, u); ++j) {
                         unsigned v = adj(g, u)[j];
                         if (!ff->seen[v]) {
                             push(ff->vq, v);
@@ -141,7 +142,7 @@ void free_graph(graph_t* g) {
             g->E = nullptr;
         }
         if (g->V) {
-            for (unsigned i = 0; i < g->N; ++i) {
+            for (int i = 0; i < g->N; ++i) {
                 if (g->V[i].deg) {
                     free(g->V[i].adj);
                     g->V[i].adj = nullptr;
@@ -196,7 +197,7 @@ graph_t* read_graph(const char* path) {
 
 void write_graph(const graph_t* g, const char* path) {
     FILE* fp = fopen(path, "w");
-    for (unsigned i = 0; i < g->M; ++i) {
+    for (int i = 0; i < g->M; ++i) {
         unsigned u = g->E[i].s, v = g->E[i].t;
         if (u < v) fprintf(fp, "%u %u\n", u, v);
         else fprintf(fp, "%u %u\n", v, u);

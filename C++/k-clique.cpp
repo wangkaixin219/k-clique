@@ -30,13 +30,13 @@ void free_all() {
 
 void degeneracy_ordering(graph_t* g) {
     order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
-    heap_t* h = construct_heap(g->P + 1);
+    min_heap_t* h = construct_min_heap(g->P + 1);
     for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, g->V[i].deg);
 
-
     for (int i = 1; i <= g->N; ++i) {
-        unsigned u = max_element(h).key;
-        order[u] = i;
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
+        order[u] = g->N - i + 1;
         pop(h);
         for (int j = 0; j < degree(g, u); ++j) {
             unsigned v = adj(g, u)[j];
@@ -44,25 +44,26 @@ void degeneracy_ordering(graph_t* g) {
         }
     }
 
-    free_heap(h);
+    free_min_heap(h);
 }
 
 void degree_ordering(graph_t* g) {
     order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
-    heap_t* h = construct_heap(g->P + 1);
+    max_heap_t* h = construct_max_heap(g->P + 1);
     for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, g->V[i].deg);
 
     for (int i = 1; i <= g->N; ++i) {
+        print_progress(i, g->N);
         unsigned u = max_element(h).key;
         order[u] = i;
         pop(h);
     }
-    free_heap(h);
+    free_max_heap(h);
 }
 
 void random_ordering(graph_t* g) {
     order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
-    heap_t* h = construct_heap(g->P + 1);
+    min_heap_t* h = construct_min_heap(g->P + 1);
     random_device rd;
     seed_seq sd{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
     mt19937_64 gen(sd);
@@ -71,43 +72,48 @@ void random_ordering(graph_t* g) {
     for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx,  dist(gen));
 
     for (int i = 1; i <= g->N; ++i) {
-        unsigned u = max_element(h).key;
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
         order[u] = i;
         pop(h);
     }
-    free_heap(h);
+    free_min_heap(h);
 }
 
-void lexicographic_ordering(graph_t* g) {
-    order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
-    heap_t* h = construct_heap(g->P + 1);
-    for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, -g->V[i].idx);
-
-    for (int i = 1; i <= g->N; ++i) {
-        unsigned u = max_element(h).key;
-        order[u] = i;
-        pop(h);
-    }
-
-    free_heap(h);
-}
+//void learned_ordering(graph_t* g) {
+//
+//    FILE* fp = fopen(parameters.order_path, "r");
+//    order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
+//    unsigned u, i = 1;
+//    while (fscanf(fp, "%u", &u) == 1) {
+//        order[u] = i++;
+//    }
+//    fclose(fp);
+//}
 
 void learned_ordering(graph_t* g) {
-
-    FILE* fp = fopen(parameters.order_path, "r");
     order = (unsigned*) calloc((g->P + 1), sizeof(unsigned));
-    unsigned u, i = 1;
-    while (fscanf(fp, "%u", &u) == 1) {
-        order[u] = i++;
+    min_heap_t* h = construct_min_heap(g->P + 1);
+    for (int i = 0; i < g->N; ++i) insert(h, g->V[i].idx, g->V[i].deg);
+
+    for (int i = 1; i <= g->N; ++i) {
+        print_progress(i, g->N);
+        unsigned u = min_element(h).key;
+        order[u] = i;
+        pop(h);
+        for (int j = 0; j < degree(g, u); ++j) {
+            unsigned v = adj(g, u)[j];
+            update(h, v);
+        }
     }
-    fclose(fp);
+
+    free_min_heap(h);
 }
 
 void coloring(graph_t* g) {
     color = (unsigned*) calloc((g->P+1), sizeof(unsigned));
     bool* used = (bool*) calloc((g->D+1), sizeof(bool));
     unsigned* reverse_order = (unsigned*) malloc((g->N + 1) * sizeof(unsigned));
-    unsigned max_color = 1;
 
     for (int i = 1; i <= g->P; ++i) if (order[i]) reverse_order[order[i]] = i;
 
@@ -122,7 +128,6 @@ void coloring(graph_t* g) {
         unsigned c = 1;
         while (used[c]) c++;
         color[u] = c;
-        max_color = c > max_color ? c : max_color;
 
         for (int j = 0; j < degree(g, u); ++j) {
             unsigned v = adj(g, u)[j];
@@ -143,13 +148,9 @@ void coloring(graph_t* g) {
         g->D = max3(g->D, degree(g, s), degree(g, t));
     }
 
-    printf("Max degree = %u after coloring (used %u colors)\n", g->D, max_color);
-
     free(used);
     free(reverse_order);
 }
-
-
 
 
 void ordering(graph_t* g, unsigned type) {
@@ -174,12 +175,12 @@ void ordering(graph_t* g, unsigned type) {
         printf("Learned ordering finish\n");
     }
     else {
-        printf("Lexicographic ordering\n");
-        lexicographic_ordering(g);
-        printf("Lexicographic ordering finish\n");
+        printf("No such ordering type\n");
+        exit(0);
     }
 
     coloring(g);
+    printf("Max degree = %u after coloring\n", g->D);
 }
 
 

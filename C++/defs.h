@@ -3,8 +3,6 @@
 
 #include <sys/resource.h>
 #include <random>
-#include <string.h>
-#include <assert.h>
 
 #define DEGENERACY      1
 #define DEGREE          2
@@ -74,7 +72,12 @@ typedef struct {
 typedef struct {
     pair_t* l;
     unsigned cur_size, max_size, *pos;      // for update
-} heap_t;
+} max_heap_t;
+
+typedef struct {
+    pair_t* l;
+    unsigned cur_size, max_size, *pos;      // for update
+} min_heap_t;
 
 inline unsigned max3(unsigned a, unsigned b, unsigned c) {
     a = (a > b) ? a : b;
@@ -145,12 +148,20 @@ bool empty(queue_t* q);
 void print_result(const result_t r);
 void print_progress(unsigned finished, unsigned total);
 void arg_parser(int argc, const char* argv[], param_t* parameters);
-heap_t* construct_heap(unsigned n);
-void free_heap(heap_t* h);
-void insert(heap_t* h, unsigned key, double value);
-void update(heap_t* h, unsigned key);
-void pop(heap_t* h);
-pair_t max_element(heap_t* h);
+// max_heap_t for DegCol use
+max_heap_t* construct_max_heap(unsigned n);
+void free_max_heap(max_heap_t* h);
+void insert(max_heap_t* h, unsigned key, double value);
+// void update(max_heap_t* h, unsigned key);
+void pop(max_heap_t* h);
+pair_t max_element(max_heap_t* h);
+// min_heap_t for DegenCol use
+min_heap_t* construct_min_heap(unsigned n);
+void free_min_heap(min_heap_t* h);
+void insert(min_heap_t* h, unsigned key, double value);
+void update(min_heap_t* h, unsigned key);
+void pop(min_heap_t* h);
+pair_t min_element(min_heap_t* h);
 
 #endif //K_CLIQUE_DEFS_H
 
